@@ -12,6 +12,7 @@ import (
 
 func NewFakeServer() {
 	times := 0
+
 	http.HandleFunc("/ping", func(responseWriter http.ResponseWriter, request *http.Request) {
 		times++
 		if times < 100 {
@@ -47,7 +48,6 @@ func Test_circuit_breaker(T *testing.T) {
 			FailureRatio:     0.8,
 		},
 	)
-
 	for i := 0; i < 1000; i++ {
 		now := time.Now().Format("2006-01-02 15:04:05.99")
 		if body, err := cb.Through(func() (response interface{}, err error) {
@@ -56,17 +56,11 @@ func Test_circuit_breaker(T *testing.T) {
 				return nil, err
 			}
 
-			defer resp.Body.Close()
-			body, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				return nil, err
-			}
-
 			if resp.StatusCode != 200 {
-				return body, errors.New("Service Error")
+				return nil, errors.New("Service Error")
 			} else {
-
-				return body, nil
+				defer resp.Body.Close()
+				return ioutil.ReadAll(resp.Body)
 			}
 
 		}); err != nil {
@@ -76,5 +70,4 @@ func Test_circuit_breaker(T *testing.T) {
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
-
 }
