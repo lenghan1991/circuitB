@@ -21,7 +21,7 @@ func NewFakeServer() {
 			} else {
 				fmt.Fprintf(responseWriter, "PONG")
 			}
-		} else if times > 400 && times < 800 {
+		} else if times > 200 && times < 300 {
 			if times%7 != 0 {
 				http.Error(responseWriter, "Unavailable", 503)
 			} else {
@@ -42,14 +42,15 @@ func Test_circuit_breaker(T *testing.T) {
 
 	cb := circuitB.NewCircuitBreaker(
 		&circuitB.CBConf{
-			FailureInterval:  10,
-			RecoveryInterval: 5,
+			FailureInterval:  5,
+			RecoveryInterval: 2,
 			MaximumFailure:   20,
 			FailureRatio:     0.8,
 		},
 	)
-	for i := 0; i < 1000; i++ {
+	for i := 0; i < 400; i++ {
 		now := time.Now().Format("2006-01-02 15:04:05.99")
+
 		if body, err := cb.Through(func() (response interface{}, err error) {
 			resp, err := http.Get("http://127.0.0.1:8787/ping")
 			if err != nil {
@@ -68,6 +69,6 @@ func Test_circuit_breaker(T *testing.T) {
 		} else {
 			fmt.Printf("%s Request(%d): %s\n", now, i, string(body.([]byte)))
 		}
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(50 * time.Millisecond)
 	}
 }

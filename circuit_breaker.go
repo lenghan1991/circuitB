@@ -140,7 +140,7 @@ func (self *CircuitBreaker) ResetHalfOpenState() {
 	self.failureCount = 0
 	self.totalRequestsCount = 0
 	self.expire = ZERO_TIME
-	self.recovery = ZERO_TIME
+	self.recovery = time.Now().Add(self.recoveryInterval * time.Second)
 }
 
 func (self *CircuitBreaker) IsOverFailureRatio() bool {
@@ -189,6 +189,13 @@ func (self *CircuitBreaker) Through(request func() (response interface{}, err er
 				self.ResetOpenState()
 			}
 			return nil, ErrTooManyRequests
+		} else if time.Now().After(self.recovery) {
+			state := self.fsm.Trigger(MINIMUM_SUCCESS_REACHED)
+			if state == CLOSED {
+				self.ResetCloseState()
+
+				return self.wrapReq(request)
+			}
 		}
 
 		return self.wrapReq(request)
